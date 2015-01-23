@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<mapper namespace="com.zhukm.dao.TopicMapper">
+	<sql id="column_list">id,author,title,url,replyCount,visitCount</sql>
+	<sql id="column_noid">author,title,url,replyCount,visitCount</sql>
+	<sql id="targetContent">
+		<if test="param == null or param == ''">
+			topics
+		</if>
+		<if test="param != null and param != ''">
+			(select <include refid="column_list"/> from topics
+					where author like '%'+#{param}+'%' or title like '%'+#{param}+'%')
+		</if>
+	</sql>
+	
+	<insert id="saveTopic">
+		insert into topics(<include refid="column_noid"/>)
+		values
+		<foreach collection="list" item="item" separator="," index="index">
+		(#{item.author},#{item.title},#{item.url},#{item.replyCount},#{item.visitCount})
+		</foreach>
+	</insert>
+	
+	<select id="getPageResult" resultType="Topic">
+		select <include refid="column_list"/> from 
+			(select row_number() over(order by A.id) as rownum,A.*
+				from(select * from topics)A)B
+		where B.rownum between ((#{pageNow}-1)*#{pageSize}) and ((#{pageNow})*#{pageSize})
+	</select>
+	
+	<select id="getRecordCount" parameterType="string" resultType="java.lang.Integer">
+		select count(*) from 
+		<if test="param == null or param ==''">
+			topics
+		</if>
+		<if test="param != null and param != ''">
+			topics where author like '%'+#{param}+'%' or title like '%'+#{param}+'%'
+		</if> 
+	</select>
+	<!-- <select id="searchTopic" resultType="Topic">
+		select <include refid="column_list"/> from topics
+		where author like '%'+#{title}+'%' or title like '%'+#{title}+'%'
+	</select> -->
+	
+	<select id="searchTopic" parameterType="Page" resultType="Topic">
+		select <include refid="column_list"/> from 
+		(select row_number() over(order by A.id) as rownum,A.*
+		from <include refid="targetContent"/> A)B
+		where B.rownum between ((#{pageNow}-1)*#{pageSize}) and ((#{pageNow})*#{pageSize})
+	</select>
+</mapper>
